@@ -1,0 +1,6 @@
+Time for dft 0.0637 milliseconds
+
+dft error: 2.775557561562891e-16
+Time for fft 2.230000000000000e-02 milliseconds
+
+fft error: 5.551115123125783e-17
