@@ -235,7 +235,7 @@ int main() {
 //              << std::setw(13) << "Sx"
 //              << std::setw(13) << "sin(x)"
 //              << "\n";
-    for(int i = 0; i < N-1; i++){
+    for(int i = 0; i < n-1; i++){
         for(int j = 0; j <= pointsPerInterval; j++){
             double t = j * h / pointsPerInterval;
             double Sx = a[i] + b[i]*t + c[i]*t*t + d[i]*t*t*t;
