@@ -5,13 +5,22 @@
 #include <fstream>
 #include <iomanip>
 #include <algorithm>
-#include <string>
 #include <chrono>
+#include <windows.h>
+#include <psapi.h>
+
 
 //Функция для ДПФ и БПФ
 double func_dft(double x){
     return x * (1-x) * std::log1p(-x);
 }
+
+size_t getMemoryUsage() {
+    PROCESS_MEMORY_COUNTERS pmc;
+    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+    return pmc.WorkingSetSize; // в байтах
+}
+
 
 //Реализация прямого и обратного ДПФ в одной функции, прямое и обратное преобразование определяются через булевую переменную dir
 std::vector<std::complex<double>> dft(std::vector<std::complex<double>>& f, bool dir = true){
@@ -123,10 +132,10 @@ void fft(std::vector<std::complex<double>>& a, bool invert = true) {
         for (auto &x : a) x /= n;
 }
 
-
 int main() {
     // ДПФ
-    int N = 10000;
+    size_t mem_before = getMemoryUsage();
+    int N = 20000;
     //Все вектора сделаны комплексными во избежание ошибок и общей логики реализции функций
     std::vector<std::complex<double>> func_f(N);
     std::vector<std::complex<double>> A_m(N);
@@ -138,13 +147,22 @@ int main() {
     }
 
     auto start_dft = std::chrono::high_resolution_clock::now();
-    //прямое ДПФ
+
+// Прямое ДПФ
     A_m = dft(func_f, true);
-    //Обратное ДПФ
+// Обратное ДПФ
     f_j = dft(A_m, false);
+
     auto end_dft = std::chrono::high_resolution_clock::now();
-    auto elapsed_dft = std::chrono::duration<double, std::milli>(end_dft - start_dft);
-    std::cout << "Time for dft " << elapsed_dft.count() << " milliseconds\n";
+
+    size_t mem_after = getMemoryUsage();
+
+    auto elapsed_dft =
+            std::chrono::duration<double, std::milli>(end_dft - start_dft);
+
+    std::cout << "Time for DFT: " << elapsed_dft.count() << " ms\n";
+    std::cout << "Memory used: "
+              << (mem_after - mem_before) / 1024.0 << " KB\n";
 
 
     //Вывод в консоль значений для самой функции на узлах, прямого и обратного ДПФ
@@ -161,14 +179,14 @@ int main() {
 //    }
 
     //вычисление ошибки и сохранение значений в файл
-    std::cout << "\n";
     std::cout << "dft error: ";
     std::cout << std::scientific << std::setprecision(15) << sup_norm(func_f, f_j) << "\n";
+    std::cout << "\n";
     save_to_file("dft_graphics.dat",func_f,f_j,N);
 
 
     //Кубический сплайн
-    int n=10000;
+    int n=10;
     double x0=0, xn=1;
     double h=(xn-x0)/n;
     std::vector<double> arg_x(n);
@@ -239,7 +257,8 @@ int main() {
 
 
     //БПФ
-    int n_fft = 10000;
+    size_t mem_before_fft = getMemoryUsage();
+    int n_fft = 20000;
     int n2_fft = 1;
 
     //Изменение размера числа узлов, так как БПФ реализовано на побайтовом смещении, соответсвенно число узлов, должно быть какой-нибудь степенью двойки
@@ -259,18 +278,32 @@ int main() {
         func_f_fft[i] = std::complex<double>(func_dft(double(i)/double(n_fft)), 0.0);
     }
 
+
+
     auto start_fft = std::chrono::high_resolution_clock::now();
-    //Прямое БПФ
+
+    // Прямое БПФ
     std::vector<std::complex<double>> A_m_fft = func_f_fft;
     fft(A_m_fft, true);
 
-    //Обратное БПФ
+    // Обратное БПФ
     std::vector<std::complex<double>> f_j_fft = A_m_fft;
     fft(f_j_fft, false);
 
     auto end_fft = std::chrono::high_resolution_clock::now();
-    auto elapsed_fft = std::chrono::duration<double, std::milli>(end_fft - start_fft);
-    std::cout << "Time for fft " << elapsed_fft.count() << " milliseconds\n";
+
+    size_t mem_after_fft = getMemoryUsage();
+
+    auto elapsed_fft =
+            std::chrono::duration<double, std::milli>(end_fft - start_fft);
+
+    std::cout << "Time for FFT: "
+              << elapsed_fft.count()
+              << " ms\n";
+
+    std::cout << "Memory used (FFT): "
+              << (mem_after_fft - mem_before_fft) / 1024.0
+              << " KB\n";
 
 
 
@@ -288,9 +321,9 @@ int main() {
 //    }
 
     //Вычисление ошибки и сохранение в файл значений для дальнейшей визуализации
-    std::cout << "\n";
     std::cout << "fft error: ";
     std::cout << std::scientific << std::setprecision(15) << sup_norm(func_f_fft, f_j_fft) << "\n";
+    std::cout << "\n";
     save_to_file("fft_graphics.dat",func_f_fft,f_j_fft,n_fft);
 
 
